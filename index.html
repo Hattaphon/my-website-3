@@ -3,30 +3,32 @@
  <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ระบบคลังสินค้าขนส่ง - เวอร์ชันแดชบอร์ดช่วงเวลาและสรุปสาเหตุ</title>
+  <title>ระบบขนส่งสินค้า - เวลา Auto & ป้องกันกดซ้ำ</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&amp;display=swap" rel="stylesheet">
   <style>
     * { font-family: 'Sarabun', sans-serif; }
-    input[type="time"]::-calendar-picker-indicator { cursor: pointer; transform: scale(1.2); }
   </style>
  </head>
  <body class="h-full bg-slate-900 text-slate-100 overflow-auto pb-12">
-  <div id="app" class="max-w-5xl mx-auto p-4 sm:p-6">
+  <div id="app" class="max-w-6xl mx-auto p-4 sm:p-6">
    
    <h1 class="text-2xl sm:text-3xl font-bold text-amber-400 mb-1 text-center">ระบบคลังสินค้าและประวัติขนส่ง</h1>
-   <p class="text-xs text-slate-400 text-center mb-6">จัดการเที่ยววิ่งรถ ตรวจสอบรายการ INV ค้างคลัง และระบบสืบค้นประวัติย้อนหลัง</p>
+   <p class="text-xs text-slate-400 text-center mb-6">บันทึกเวลาอัตโนมัติ (Auto Time) และระบบป้องกันการกดซ้ำ</p>
    
    <div class="flex border-b border-slate-700 mb-6 bg-slate-800/50 p-1.5 rounded-xl gap-1">
       <button id="tab-main-btn" class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all bg-amber-500 text-slate-950">
          <i data-lucide="edit-3" class="w-4 h-4"></i> <span>บันทึก & ติดตามงาน</span>
       </button>
       <button id="tab-dash-btn" class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-slate-700/50">
-         <i data-lucide="bar-chart-3" class="w-4 h-4"></i> <span>หน้าสรุป & งานค้าง</span>
+         <i data-lucide="bar-chart-3" class="w-4 h-4"></i> <span>หน้าสรุปภาพรวม & กราฟ</span>
       </button>
       <button id="tab-history-btn" class="flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-slate-700/50">
-         <i data-lucide="search" class="w-4 h-4"></i> <span>เช็กประวัติ INV ย้อนหลัง</span>
+         <i data-lucide="search" class="w-4 h-4"></i> <span>เช็กประวัติย้อนหลัง</span>
       </button>
    </div>
 
@@ -34,59 +36,58 @@
       <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-md">
        <h2 class="text-base font-semibold text-amber-300 mb-3"><i data-lucide="plus-circle" class="inline w-4 h-4 mr-1.5 text-amber-400"></i>บันทึกเที่ยวส่งงานใหม่</h2>
        <form id="delivery-form" class="grid sm:grid-cols-2 gap-4">
-        
         <div class="sm:col-span-2">
          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900/40 p-3.5 rounded-xl border border-slate-700/50">
           <div>
            <label for="trip-date" class="block text-xs text-slate-400 mb-1">วันที่ออกเดินทาง</label> 
-           <input id="trip-date" type="date" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none">
+           <input id="trip-date" type="date" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1.5 text-sm text-white">
           </div>
           <div>
-           <label for="dep-time" class="block text-xs text-slate-400 mb-1">เวลาที่ออกรถ</label> 
-           <input id="dep-time" type="time" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1.5 text-sm text-amber-300 font-bold focus:outline-none">
+           <label for="dep-time" class="block text-xs text-slate-400 mb-1">เวลาที่ออกรถ (Auto)</label> 
+           <input id="dep-time" type="time" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1.5 text-sm text-amber-300 font-bold">
           </div>
           <div>
            <label for="trip-type" class="block text-xs text-slate-400 mb-1">ประเภทรอบส่ง</label> 
-           <select id="trip-type" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white font-semibold focus:outline-none">
+           <select id="trip-type" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white font-semibold">
              <option value="ส่งงาน">1. ส่งงาน</option>
              <option value="รับPart Supply">2. รับPart Supply</option>
              <option value="เครีย์เอกสาร">3. เครีย์เอกสาร</option>
-            <option value="เครีย์เอกสาร">4. รับMAT จากนาป่า</option>
-             <option value="4. อื่นๆ">5. อื่นๆ (ระบุข้อมูล)</option>
+             <option value="รับMAT จากนาป่า">4. รับMAT จากนาป่า</option>
+             <option value="5. อื่นๆ">5. อื่นๆ (ระบุข้อมูล)</option>
            </select>
           </div>
           <div>
-           <label for="trip-id" class="block text-xs text-slate-400 mb-1">เลขที่เที่ยว (รันอัตโนมัติ)</label> 
-           <input id="trip-id" type="text" readonly class="w-full bg-slate-700/70 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-amber-400 font-bold text-center" placeholder="สร้างรหัส...">
+           <label for="trip-id" class="block text-xs text-slate-400 mb-1">เลขที่เที่ยว</label> 
+           <input id="trip-id" type="text" readonly class="w-full bg-slate-700/70 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-amber-400 font-bold text-center">
           </div>
          </div>
         </div>
 
         <div id="other-type-container" class="sm:col-span-2 hidden bg-slate-900/50 border border-slate-700 p-3 rounded-xl">
            <label for="trip-type-other" class="block text-xs text-amber-300 mb-1">ระบุรายละเอียดรอบส่งอื่นๆ</label>
-           <input id="trip-type-other" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none" placeholder="ระบุงานอื่นเพิ่มเติม...">
+           <input id="trip-type-other" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white">
         </div>
 
         <div>
            <label for="start-location-select" class="block text-xs text-slate-400 mb-1">สถานที่ออก (ต้นทาง)</label>
-           <select id="start-location-select" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-2 text-sm text-white font-semibold focus:outline-none">
+           <select id="start-location-select" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-2 text-sm text-white font-semibold">
               <option value="TLP">1. TLP</option>
               <option value="คลังนาป่า">2. คลังนาป่า</option>
               <option value="อื่นๆ">3. อื่นๆ (ระบุสถานที่)</option>
            </select>
         </div>
         <div id="custom-location-container" class="hidden">
-           <label for="start-location-custom" class="block text-xs text-amber-300 mb-1">ระบุสถานที่ออกเดินทางอื่น ๆ</label>
-           <input id="start-location-custom" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none" placeholder="พิมพ์คลังต้นทางอื่นๆ">
+           <label for="start-location-custom" class="block text-xs text-amber-300 mb-1">ระบุสถานที่อื่น ๆ</label>
+           <input id="start-location-custom" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white">
         </div>
 
         <div>
          <label for="driver" class="block text-xs text-slate-400 mb-1">ชื่อผู้จัดส่ง</label> 
-         <input id="driver" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none" placeholder="ระบุชื่อคนขับ">
+         <input id="driver" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white" placeholder="ชื่อคนขับ">
         </div>
         <div>
          <label for="customer" class="block text-xs text-slate-400 mb-1">ลูกค้าปลายทาง / สถานที่ไป</label> 
-         <input id="customer" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none" placeholder="ชื่อบริษัท หรือ ร้านค้าปลายทาง">
+         <input id="customer" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-sm text-white" placeholder="ปลายทาง">
         </div>
 
         <div id="invoice-section" class="sm:col-span-2">
@@ -94,12 +95,12 @@
          <div id="invoices-container" class="space-y-1.5 mb-2.5">
           <div class="invoice-item grid grid-cols-12 gap-2 items-center bg-slate-700/20 p-2 rounded-xl border border-slate-700">
            <div class="col-span-4">
-            <select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"> 
+            <select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs"> 
              <option value="INVB-">INVB-</option> <option value="INVN-">INVN-</option> <option value="INMB-">INMB-</option> <option value="INMN-">INMN-</option> 
             </select>
            </div>
            <div class="col-span-5">
-            <input type="text" class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none" placeholder="เลขที่เอกสาร">
+            <input type="text" class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white" placeholder="เลขเอกสาร">
            </div>
            <div class="col-span-2">
             <input type="text" value="2026" readonly class="inv-year w-full bg-slate-800 border border-slate-700 rounded-lg px-1 py-1 text-slate-500 text-xs text-center font-bold">
@@ -113,8 +114,8 @@
         </div>
 
         <div class="sm:col-span-2 mt-1">
-         <button type="submit" id="submit-btn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm"> 
-          <i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูลเที่ยวรถ
+         <button type="submit" id="submit-btn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"> 
+          <i data-lucide="save" class="w-4 h-4"></i> <span id="submit-btn-text">บันทึกข้อมูลเที่ยวรถ</span>
          </button>
         </div>
        </form>
@@ -122,15 +123,10 @@
 
       <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700 shadow-md">
        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-         <div>
-            <h2 class="text-base font-semibold text-amber-300 flex items-center gap-2"><i data-lucide="truck" class="text-amber-400 w-5 h-5"></i>รายการรถที่อยู่หน้างาน (รอตรวจรับกลับคลัง)</h2>
-         </div>
+         <h2 class="text-base font-semibold text-amber-300 flex items-center gap-2"><i data-lucide="truck" class="text-amber-400 w-5 h-5"></i>รายการรถที่อยู่ระหว่างขนส่ง (สถานะปัจจุบัน)</h2>
          <div class="flex items-center gap-2">
-            <div class="relative w-full sm:w-64">
-               <input type="text" id="active-trip-filter" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none" placeholder="ค้นหาคนขับ / ปลายทาง / เลขเที่ยว...">
-               <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
-            </div>
-            <button id="refresh-btn" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 flex items-center gap-1 text-xs"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> รีเฟรช</button>
+            <input type="text" id="active-trip-filter" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100" placeholder="ค้นหาคนขับ/ปลายทาง...">
+            <button id="refresh-btn" class="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 flex items-center gap-1 text-xs" onclick="fetchRecords()"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> รีเฟรช</button>
          </div>
        </div>
        <div id="records-list" class="space-y-3">
@@ -140,156 +136,103 @@
    </div>
 
    <div id="page-dashboard" class="space-y-6 hidden">
-      
-      <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 flex flex-wrap gap-1 shadow-sm max-w-md">
-         <button id="filter-time-today" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400 transition-all">วันนี้</button>
-         <button id="filter-time-week" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">สัปดาห์นี้</button>
-         <button id="filter-time-month" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">เดือนนี้</button>
-         <button id="filter-time-year" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all">ปีนี้</button>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-sm">
+         <div class="bg-slate-950 p-1 rounded-xl border border-slate-700 flex gap-1 w-full sm:w-auto">
+            <button id="filter-time-today" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400">วันนี้</button>
+            <button id="filter-time-week" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">สัปดาห์นี้</button>
+            <button id="filter-time-month" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">เดือนนี้</button>
+            <button id="filter-time-year" class="time-filter-btn flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">ปีนี้</button>
+         </div>
+         <button id="export-excel-btn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> <span>ดาวน์โหลดรายงาน Excel</span>
+         </button>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
          <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
-            <div class="flex items-center justify-between text-slate-400 mb-1.5">
-               <span class="text-xs font-semibold">ประเภทเที่ยววิ่ง</span>
-               <i data-lucide="layers" class="w-4 h-4 text-amber-400"></i>
-            </div>
-            <div class="text-xl font-bold text-white mb-2" id="stat-total-trips">0 <span class="text-xs font-normal text-slate-400">ครั้ง</span></div>
-            <div class="text-[11px] text-slate-400 space-y-0.5 border-t border-slate-700/60 pt-2 font-mono">
-               <div>1. ส่งงาน: <span id="stat-type-1" class="text-amber-400 font-bold">0</span></div>
-               <div>2. รับPart Supply: <span id="stat-type-2" class="text-blue-400 font-bold">0</span></div>
-               <div>3. เครีย์เอกสาร: <span id="stat-type-3" class="text-purple-400 font-bold">0</span></div>
-               <div>4. รับMAT จากนาป่า: <span id="stat-type-3" class="text-purple-400 font-bold">0</span></div>
-               <div>5. อื่นๆ: <span id="stat-type-4" class="text-slate-300 font-bold">0</span></div>
-            </div>
+            <span class="text-xs text-slate-400 block mb-1">ประเภทเที่ยววิ่งทั้งหมด</span>
+            <div class="text-xl font-bold text-white" id="stat-total-trips">0 ครั้ง</div>
          </div>
-
-         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col justify-between">
-            <div class="flex items-center justify-between text-slate-400">
-               <span class="text-xs font-semibold">รายการ INV ทั้งหมด</span>
-               <i data-lucide="file-text" class="w-4 h-4 text-blue-400"></i>
-            </div>
-            <div class="my-2 text-3xl font-black text-blue-400 text-center" id="stat-total-inv">0</div>
-            <div class="text-[11px] text-slate-400 text-center border-t border-slate-700/60 pt-1">รวมในกลุ่มช่วงเวลาที่เลือก</div>
+         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col justify-center">
+            <span class="text-xs text-slate-400 block">จำนวน INV รวมในรอบ</span>
+            <div class="text-2xl font-black text-blue-400 mt-1" id="stat-total-inv">0</div>
          </div>
-
-         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col justify-between">
-            <div class="flex items-center justify-between text-slate-400">
-               <span class="text-xs font-semibold">สถานะตรวจรับกลับ</span>
-               <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
-            </div>
-            <div class="grid grid-cols-2 text-center my-1.5">
-               <div class="border-r border-slate-700">
-                  <div class="text-xl font-bold text-emerald-400" id="stat-success-inv">0</div>
-                  <div class="text-[10px] text-slate-400">รับคืนสำเร็จ</div>
-               </div>
-               <div>
-                  <div class="text-xl font-bold text-red-400 animate-pulse" id="stat-pending-inv">0</div>
-                  <div class="text-[10px] text-slate-400">ค้างรายการ</div>
-               </div>
-            </div>
-            <div class="text-[11px] text-slate-500 text-center border-t border-slate-700/60 pt-1" id="stat-inv-ratio">0%</div>
+         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md">
+            <span class="text-xs text-slate-400 block">สถานะเคลียร์ / ค้างงาน</span>
+            <div class="text-xs text-emerald-400 mt-1">สำเร็จ: <span id="stat-success-inv">0</span></div>
+            <div class="text-xs text-red-400">ค้างคลัง: <span id="stat-pending-inv">0</span></div>
          </div>
-
-         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col justify-between">
-            <div class="flex items-center justify-between text-slate-400">
-               <span class="text-xs font-semibold">ไม่รับกลับ (สาเหตุ)</span>
-               <i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i>
-            </div>
-            <div class="my-2 text-3xl font-black text-red-400 text-center" id="stat-reason-count">0</div>
-            <div class="text-[11px] text-slate-400 text-center border-t border-slate-700/60 pt-1">เคสขัดข้องในช่วงเวลา</div>
+         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md flex flex-col justify-center">
+            <span class="text-xs text-slate-400 block">พบเคสปฏิเสธ/ชำรุด</span>
+            <div class="text-2xl font-black text-red-400 mt-1" id="stat-reason-count">0</div>
          </div>
       </div>
 
-      <div class="bg-slate-950 rounded-2xl p-5 border border-red-500/20 shadow-xl">
-         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
-            <div class="flex items-center gap-2">
-               <i data-lucide="alert-circle" class="text-red-400 w-5 h-5"></i>
-               <h3 class="text-base font-bold text-red-400">ตารางรายงานรายการคงค้างคลัง (ตามรอบเวลาที่เลือก)</h3>
-            </div>
-            <input type="text" id="pending-search-filter" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 w-full sm:w-60" placeholder="พิมพ์กรอกหาชื่อ/ปลายทางค้าง...">
-         </div>
+      <div class="grid md:grid-cols-3 gap-6">
+         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md md:col-span-2"><div class="relative h-56 w-full"><canvas id="barChart"></canvas></div></div>
+         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-md"><div class="relative h-56 w-full flex items-center justify-center"><canvas id="pieChart"></canvas></div></div>
+      </div>
+
+      <div class="bg-slate-950 rounded-2xl p-4 border border-red-500/20 shadow-xl">
+         <h3 class="text-sm font-bold text-red-400 mb-3">⚠️ รายการสินค้าค้างคลังในระบบขณะนี้</h3>
          <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                <thead>
                   <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/40">
-                     <th class="py-2.5 px-3 font-semibold">เลขที่เที่ยว</th>
-                     <th class="py-2.5 px-3 font-semibold">ต้นทาง</th>
-                     <th class="py-2.5 px-3 font-semibold">รอบวิ่ง</th>
-                     <th class="py-2.5 px-3 font-semibold">วันที่ออก</th>
-                     <th class="py-2.5 px-3 font-semibold">ชื่อผู้จัดส่ง</th>
-                     <th class="py-2.5 px-3 font-semibold text-red-300">เลขที่ INV / รายการค้าง</th>
-                     <th class="py-2.5 px-3 font-semibold">ลูกค้า/ปลายทาง</th>
+                     <th class="py-2 px-3">เลขที่เที่ยว</th><th class="py-2 px-3">รอบวิ่ง</th><th class="py-2 px-3">วันที่ออก</th><th class="py-2 px-3">คนขับ</th><th class="py-2 px-3 text-red-300">INV ค้าง</th><th class="py-2 px-3">ปลายทาง</th>
                   </tr>
                </thead>
                <tbody id="dashboard-body" class="divide-y divide-slate-900 text-slate-300"></tbody>
             </table>
-            <p id="dashboard-empty-msg" class="text-center text-slate-500 py-6 text-xs hidden">🎉 ไม่มีรายการค้างคาในช่วงเวลานี้</p>
          </div>
       </div>
    </div>
 
    <div id="page-history" class="space-y-4 hidden">
-      <div class="bg-slate-950 rounded-2xl p-5 border border-emerald-500/20 shadow-xl">
-         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
-            <div class="flex items-center gap-2">
-               <div class="bg-emerald-500/10 p-2 rounded-lg"><i data-lucide="history" class="text-emerald-400 w-5 h-5"></i></div>
-               <div>
-                  <h2 class="text-base font-bold text-emerald-400">เช็กและตรวจสอบเลขที่ INV. ย้อนหลัง</h2>
-                  <p class="text-[11px] text-slate-400">ค้นหารายการเที่ยววิ่งและเอกสารที่เคลียร์เวลากลับคลังสมบูรณ์แล้ว</p>
-               </div>
-            </div>
-            <div class="relative w-full sm:w-80">
-               <input type="text" id="history-search-filter" class="w-full bg-slate-800 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-400 focus:border-emerald-400 focus:outline-none" placeholder="พิมพ์ตรวจสอบข้อมูล (เลขที่ INV, ชื่อคนส่ง, ลูกค้า)...">
-               <i data-lucide="search" class="w-4 h-4 text-emerald-400 absolute left-2.5 top-2.5"></i>
-            </div>
+      <div class="bg-slate-950 rounded-2xl p-5 border border-slate-800">
+         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-800">
+            <h2 class="text-sm font-bold text-emerald-400">🔍 ตรวจสอบประวัติปิดรอบและรูปถ่ายหลักฐาน</h2>
+            <input type="text" id="history-search-filter" class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 w-full sm:w-72" placeholder="พิมพ์คนขับ/เลขเที่ยว/เลข INV...">
          </div>
-         
          <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs">
                <thead>
                   <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/50">
-                     <th class="py-2.5 px-3 font-semibold">เลขที่เที่ยว</th>
-                     <th class="py-2.5 px-3 font-semibold">ต้นทาง</th>
-                     <th class="py-2.5 px-3 font-semibold">ประเภทงาน</th>
-                     <th class="py-2.5 px-3 font-semibold">วันที่ออก</th>
-                     <th class="py-2.5 px-3 font-semibold text-emerald-400">เวลากลับคลัง</th>
-                     <th class="py-2.5 px-3 font-semibold">ชื่อผู้จัดส่ง</th>
-                     <th class="py-2.5 px-3 font-semibold text-amber-300">เลขที่ INV.</th>
-                     <th class="py-2.5 px-3 font-semibold">ลูกค้า / ปลายทาง</th>
-                     <th class="py-2.5 px-3 font-semibold text-red-300">สาเหตุไม่รับคืน</th>
+                     <th class="py-2 px-3">เลขที่เที่ยว</th><th class="py-2 px-3">ประเภทงาน</th><th class="py-2 px-3">วันที่</th><th class="py-2 px-3 text-amber-400">ออกปลายทาง(K)</th><th class="py-2 px-3 text-indigo-400">ถึงบริษัท(D)</th><th class="py-2 px-3">คนขับ</th><th class="py-2 px-3">INV</th><th class="py-2 px-3">ปลายทาง</th><th class="py-2 px-3 text-sky-400">รูปหลักฐาน(L)</th>
                   </tr>
                </thead>
                <tbody id="history-dashboard-body" class="divide-y divide-slate-900 text-slate-300"></tbody>
             </table>
-            <p id="history-empty-msg" class="text-center text-slate-500 py-6 text-xs">💡 กรุณาพิมพ์รหัสใบแจ้งหนี้หรือชื่อคนส่งลงในช่องค้นหาด้านบน เพื่อดึงข้อมูลรายงานย้อนหลัง</p>
          </div>
       </div>
    </div>
 
   </div>
 
-  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-   <div class="bg-slate-800 rounded-2xl p-5 w-full max-w-md border border-slate-600 shadow-2xl">
-    <div class="flex justify-between items-start mb-2">
-      <h3 class="text-emerald-400 font-bold text-sm flex items-center gap-1.5"><i data-lucide="clock-4"></i> บันทึกรถกลับเข้าคลังรายใบงาน</h3>
-      <span id="modal-trip-id" class="bg-slate-700 text-amber-400 font-bold text-[11px] px-2 py-0.5 rounded"></span>
-    </div>
-    <p id="modal-meta-display" class="text-[11px] text-slate-400 mb-3 border-b border-slate-700 pb-2"></p>
+  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+   <div class="bg-slate-800 rounded-2xl p-5 w-full max-w-md border border-slate-700 shadow-2xl">
+    <h3 class="text-amber-400 font-bold text-sm mb-1">📦 ตรวจรับและบันทึกสถานะเที่ยวรถขากลับ</h3>
+    <p class="text-[11px] text-slate-400 mb-3">ตรวจสอบสเตตัสเอกสาร INV พร้อมถ่ายรูปเพื่อเป็นหลักฐานยืนยัน</p>
     
-    <div class="mb-3">
-      <label class="text-xs font-semibold text-slate-300 mb-1.5 block">เช็กรายการตรวจรับเข้าคลัง (ไม่ติ๊ก = เลือกสาเหตุที่ค้าง):</label>
-      <div id="modal-invoice-list-container" class="space-y-2.5 bg-slate-900/50 p-2.5 rounded-xl max-h-56 overflow-y-auto border border-slate-700"></div>
+    <div id="modal-invoice-list-container" class="space-y-2 mb-4"></div>
+    
+    <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700 mb-4 text-center">
+       <span class="block text-xs text-amber-300 font-semibold mb-2 flex items-center justify-center gap-1">
+          <i data-lucide="camera" class="w-4 h-4"></i> ถ่ายภาพหลักฐานขากลับ (บังคับใช้กล้องหลัง)
+       </span>
+       <input type="file" id="modal-image-input" accept="image/*" capture="environment" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-400 file:text-slate-950 hover:file:bg-amber-300 cursor-pointer">
+       <div id="image-preview-container" class="mt-2.5 hidden">
+          <p class="text-[11px] text-emerald-400 font-semibold flex items-center justify-center gap-1">✓ บันทึกภาพถ่ายเข้าคลังสำเร็จ</p>
+       </div>
     </div>
 
-    <div class="mb-3">
-      <label for="return-time" class="block text-xs text-slate-400 mb-1">เวลาที่รถกลับเข้าถึงคลัง</label> 
-      <input id="return-time" type="time" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-1.5 text-white font-bold text-sm focus:outline-none">
-    </div>
-    
-    <div class="flex gap-3 mt-4">
-     <button id="modal-save" class="bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-bold px-4 py-2 rounded-lg flex-1 text-xs">ยืนยันลงบันทึก</button> 
-     <button id="modal-cancel" class="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg flex-1 text-xs">ปิดหน้าต่าง</button>
+    <p class="text-[10px] text-indigo-300 bg-indigo-950/40 p-2 rounded-lg border border-indigo-500/20 mb-4 text-center">
+       ℹ️ ระบบจะทำการบันทึกเวลาขากลับ (คอลัมน์ D) เป็นเวลาปัจจุบันโดยอัตโนมัติทันทีที่กดปุ่มด้านล่าง
+    </p>
+
+    <div class="flex gap-2">
+     <button id="modal-save" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl flex-1 text-xs disabled:opacity-50">บันทึกเวลา Auto และส่งรูป</button> 
+     <button id="modal-cancel" class="bg-slate-600 text-white px-4 py-2.5 rounded-xl flex-1 text-xs">ยกเลิก</button>
     </div>
    </div>
   </div>
@@ -297,605 +240,374 @@
   <script>
   const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJ_J-JGljo0Lyv0AGR9jF2wA4QR1Ig4BT_Dr0nPM__8z0KaJom7gAgBnSElyuaQuVHkQ/exec';
 
-  let allRawRows = []; 
-  let uniqueTrips = []; 
-  let selectedTripData = null; 
-  let currentTimeFilter = 'today'; // ค่าเริ่มต้นการกรองหน้าสรุปผล: today, week, month, year
+  let allRawRows = []; uniqueTrips = []; selectedTripData = null; currentTimeFilter = 'today';
+  let barChartInstance = null; pieChartInstance = null;
+  let base64ImageData = ""; base64ImageName = ""; base64ImageType = "";
+
+  // ฟังก์ชันตั้งค่าเวลาปัจจุบันลงช่อง "เวลาที่ออกรถ" แบบ Auto
+  function setInitialCurrentTime() {
+     const now = new Date();
+     const hours = String(now.getHours()).padStart(2, '0');
+     const minutes = String(now.getMinutes()).padStart(2, '0');
+     document.getElementById('dep-time').value = `${hours}:${minutes}`;
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
-    setupTabNavigation();
-    setupTimeFilterListeners();
+    setupTabNavigation(); setupTimeFilterListeners(); setupExportExcelListener();
+    document.getElementById('trip-date').valueAsDate = new Date();
     
-    const today = new Date();
-    document.getElementById('trip-date').valueAsDate = today;
-    const h = String(today.getHours()).padStart(2, '0');
-    const m = String(today.getMinutes()).padStart(2, '0');
-    document.getElementById('dep-time').value = `${h}:${m}`;
+    // ⏱️ เรียกสคริปต์เซ็ตเวลาปัจจุบันให้ทันทีเมื่อโหลดหน้าเว็บขึ้นมา
+    setInitialCurrentTime();
     
-    setupTypeListeners();
-    setupLocationListeners();
-    fetchRecords();
+    setupTypeListeners(); setupLocationListeners(); fetchRecords();
     
     document.getElementById('active-trip-filter').addEventListener('input', renderMainRecordsList);
-    document.getElementById('pending-search-filter').addEventListener('input', renderPendingDashboard);
     document.getElementById('history-search-filter').addEventListener('input', renderHistoryDashboard);
+
+    document.getElementById('modal-image-input').addEventListener('change', function(e) {
+       const file = e.target.files[0];
+       if (file) {
+          base64ImageName = file.name;
+          base64ImageType = file.type;
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+             base64ImageData = evt.target.result;
+             document.getElementById('image-preview-container').classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+       }
+    });
   });
 
   function setupTabNavigation() {
-     const tMainBtn = document.getElementById('tab-main-btn');
-     const tDashBtn = document.getElementById('tab-dash-btn');
-     const tHistBtn = document.getElementById('tab-history-btn');
-     const pMain = document.getElementById('page-main');
-     const pDash = document.getElementById('page-dashboard');
-     const pHist = document.getElementById('page-history');
+     const tMainBtn = document.getElementById('tab-main-btn'), tDashBtn = document.getElementById('tab-dash-btn'), tHistBtn = document.getElementById('tab-history-btn');
+     const pMain = document.getElementById('page-main'), pDash = document.getElementById('page-dashboard'), pHist = document.getElementById('page-history');
+     const act = "flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all bg-amber-500 text-slate-950";
+     const inact = "flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-slate-700/50";
 
-     const activeStyle = "flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all bg-amber-500 text-slate-950";
-     const inactiveStyle = "flex-1 py-2.5 px-3 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-slate-700/50";
-
-     tMainBtn.addEventListener('click', () => {
-        pMain.classList.remove('hidden'); pDash.classList.add('hidden'); pHist.classList.add('hidden');
-        tMainBtn.className = activeStyle; tDashBtn.className = inactiveStyle; tHistBtn.className = inactiveStyle;
-     });
-     tDashBtn.addEventListener('click', () => {
-        pMain.classList.add('hidden'); pDash.classList.remove('hidden'); pHist.classList.add('hidden');
-        tMainBtn.className = inactiveStyle; tDashBtn.className = activeStyle; tHistBtn.className = inactiveStyle;
-        calculateSummaryStats(); 
-        renderPendingDashboard();
-     });
-     tHistBtn.addEventListener('click', () => {
-        pMain.classList.add('hidden'); pDash.classList.add('hidden'); pHist.classList.remove('hidden');
-        tMainBtn.className = inactiveStyle; tDashBtn.className = inactiveStyle; tHistBtn.className = activeStyle;
-     });
+     tMainBtn.addEventListener('click', () => { pMain.classList.remove('hidden'); pDash.classList.add('hidden'); pHist.classList.add('hidden'); tMainBtn.className = act; tDashBtn.className = inact; tHistBtn.className = inact; });
+     tDashBtn.addEventListener('click', () => { pMain.classList.add('hidden'); pDash.classList.remove('hidden'); pHist.classList.add('hidden'); tMainBtn.className = inact; tDashBtn.className = act; tHistBtn.className = inact; calculateSummaryStats(); renderPendingDashboard(); });
+     tHistBtn.addEventListener('click', () => { pMain.classList.add('hidden'); pDash.classList.add('hidden'); pHist.classList.remove('hidden'); tMainBtn.className = inact; tDashBtn.className = inact; tHistBtn.className = act; });
   }
 
-  // 📅 ฟังก์ชันตั้งค่าปุ่มเลือกช่วงเวลาสรุปผล
   function setupTimeFilterListeners() {
-     const buttons = {
-        'today': document.getElementById('filter-time-today'),
-        'week': document.getElementById('filter-time-week'),
-        'month': document.getElementById('filter-time-month'),
-        'year': document.getElementById('filter-time-year')
-     };
-     
-     const activeBtnStyle = "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400 transition-all";
-     const inactiveBtnStyle = "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all";
-
-     Object.keys(buttons).forEach(key => {
-        buttons[key].addEventListener('click', () => {
-           currentTimeFilter = key;
-           Object.keys(buttons).forEach(k => { buttons[k].className = (k === key) ? activeBtnStyle : inactiveBtnStyle; });
-           calculateSummaryStats();
-           renderPendingDashboard();
+     const btns = {'today': document.getElementById('filter-time-today'), 'week': document.getElementById('filter-time-week'), 'month': document.getElementById('filter-time-month'), 'year': document.getElementById('filter-time-year')};
+     Object.keys(btns).forEach(k => {
+        btns[k].addEventListener('click', () => {
+           currentTimeFilter = k;
+           Object.keys(btns).forEach(x => { btns[x].className = (x === k) ? "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-950 bg-amber-400" : "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-white"; });
+           calculateSummaryStats(); renderPendingDashboard();
         });
      });
   }
 
-  // ฟังก์ชันช่วยเหลือ: เช็กว่าวันที่ระบุอยู่ในเงื่อนไขช่วงเวลาหรือไม่
   function isDateInFilterRange(dateStr, filterRange) {
-     if(!dateStr) return false;
-     const rowDate = new Date(dateStr);
-     if(isNaN(rowDate.getTime())) return false;
-     
-     const now = new Date();
-     
-     // ล้างเศษเวลาเพื่อให้เทียบแค่วันที่
-     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-     const targetDate = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate());
-
-     if (filterRange === 'today') {
-        return targetDate.getTime() === startOfToday.getTime();
-     } 
-     else if (filterRange === 'week') {
-        const currentDay = startOfToday.getDay(); 
-        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay; 
-        const startOfWeek = new Date(startOfToday.getTime() + distanceToMonday * 24 * 60 * 60 * 1000);
-        const endOfWeek = new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000);
-        return targetDate >= startOfWeek && targetDate <= endOfWeek;
-     } 
-     else if (filterRange === 'month') {
-        return targetDate.getFullYear() === now.getFullYear() && targetDate.getMonth() === now.getMonth();
-     } 
-     else if (filterRange === 'year') {
-        return targetDate.getFullYear() === now.getFullYear();
-     }
+     if(!dateStr) return false; const d = new Date(dateStr); if(isNaN(d.getTime())) return false;
+     const now = new Date(), today = new Date(now.getFullYear(), now.getMonth(), now.getDate()), tgt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+     if (filterRange === 'today') return tgt.getTime() === today.getTime();
+     if (filterRange === 'week') { const diff = today.getDay() === 0 ? -6 : 1 - today.getDay(); const s = new Date(today.getTime() + diff*24*60*60*1000), e = new Date(s.getTime() + 6*24*60*60*1000); return tgt >= s && tgt <= e; }
+     if (filterRange === 'month') return tgt.getFullYear() === now.getFullYear() && tgt.getMonth() === now.getMonth();
+     if (filterRange === 'year') return tgt.getFullYear() === now.getFullYear();
      return true;
   }
 
   function setupTypeListeners() {
-    const typeSelect = document.getElementById('trip-type');
-    const invoiceSection = document.getElementById('invoice-section');
-    const otherContainer = document.getElementById('other-type-container');
-    const otherInput = document.getElementById('trip-type-other');
-
-    typeSelect.addEventListener('change', () => {
-        const val = typeSelect.value;
-        if (val === "ส่งงาน") { invoiceSection.classList.remove('hidden'); } 
-        else { invoiceSection.classList.add('hidden'); }
-
-        if (val === "4. อื่นๆ") {
-            otherContainer.classList.remove('hidden');
-            otherInput.required = true;
-        } else {
-            otherContainer.classList.add('hidden');
-            otherInput.required = false;
-            otherInput.value = '';
-        }
-    });
+    const s = document.getElementById('trip-type'), c = document.getElementById('invoice-section'), o = document.getElementById('other-type-container');
+    s.addEventListener('change', () => { c.classList.toggle('hidden', s.value !== "ส่งงาน"); o.classList.toggle('hidden', s.value !== "5. อื่นๆ"); });
   }
 
   function setupLocationListeners() {
-     const locSelect = document.getElementById('start-location-select');
-     const customContainer = document.getElementById('custom-location-container');
-     const customInput = document.getElementById('start-location-custom');
-
-     locSelect.addEventListener('change', () => {
-        if (locSelect.value === "อื่นๆ") {
-           customContainer.classList.remove('hidden');
-           customInput.required = true;
-           customInput.focus();
-        } else {
-           customContainer.classList.add('hidden');
-           customInput.required = false;
-           customInput.value = '';
-        }
-     });
+     const s = document.getElementById('start-location-select'), c = document.getElementById('custom-location-container');
+     s.addEventListener('change', () => { c.classList.toggle('hidden', s.value !== "อื่นๆ"); });
   }
-
-  function generateTripId(rawRows, targetDateString) {
-    let dateObj = new Date();
-    if(targetDateString) dateObj = new Date(targetDateString);
-    const yy = String(dateObj.getFullYear()).slice(-2);
-    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const dd = String(dateObj.getDate()).padStart(2, '0');
-    const prefix = yy + mm + dd;
-    const trackedIds = new Set(rawRows.map(r => String(r.trip_id)));
-    const matchingIds = [...trackedIds].filter(id => id.startsWith(prefix));
-    const seqs = matchingIds.map(id => parseInt(id.slice(-3)) || 0);
-    const nextSeq = (Math.max(...seqs, 0) + 1).toString().padStart(3, '0');
-    return prefix + nextSeq;
-  }
-
-  document.getElementById('trip-date').addEventListener('change', (e) => {
-    document.getElementById('trip-id').value = generateTripId(allRawRows, e.target.value);
-  });
-
-  document.getElementById('add-invoice-btn').addEventListener('click', () => {
-    const container = document.getElementById('invoices-container');
-    const div = document.createElement('div');
-    div.className = 'invoice-item grid grid-cols-12 gap-2 items-center bg-slate-700/20 p-2 rounded-xl border border-slate-700';
-    div.innerHTML = `
-        <div class="col-span-4">
-         <select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"> 
-          <option value="INVB-">INVB-</option> <option value="INVN-">INVN-</option> <option value="INMB-">INMB-</option> <option value="INMN-">INMN-</option> 
-         </select>
-        </div>
-        <div class="col-span-5">
-         <input type="text" required class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none" placeholder="เลขที่เอกสาร">
-        </div>
-        <div class="col-span-2">
-         <input type="text" value="2026" readonly class="inv-year w-full bg-slate-800 border border-slate-700 rounded-lg px-1 py-1 text-slate-500 text-xs text-center font-bold">
-        </div>
-        <div class="col-span-1 text-center">
-         <button type="button" class="remove-invoice-btn text-red-400 hover:text-red-600 p-1"><i data-lucide="x-circle" class="w-4 h-4 mx-auto"></i></button>
-        </div>
-    `;
-    container.appendChild(div);
-    div.querySelector('.remove-invoice-btn').addEventListener('click', () => div.remove());
-    lucide.createIcons();
-  });
 
   async function fetchRecords() {
-    const msgEl = document.getElementById('empty-msg');
-    if(msgEl) msgEl.textContent = "กำลังโหลดข้อมูลจาก Google Sheet...";
     try {
-      const response = await fetch(GOOGLE_SCRIPT_URL);
-      allRawRows = await response.json();
-      if(!Array.isArray(allRawRows)) allRawRows = [];
-      document.getElementById('trip-id').value = generateTripId(allRawRows, document.getElementById('trip-date').value);
-      processAndGroupData();
-      calculateSummaryStats(); 
-      renderMainRecordsList();
-      renderPendingDashboard(); 
-      renderHistoryDashboard();
-    } catch (err) {
-      console.error(err);
-      if(msgEl) msgEl.innerHTML = "⚠️ ขัดข้อง กรุณากดรีเฟรชใหม่อีกครั้ง";
-    }
+      const res = await fetch(GOOGLE_SCRIPT_URL); allRawRows = await res.json(); if(!Array.isArray(allRawRows)) allRawRows = [];
+      const prefix = new Date().toISOString().slice(2,10).replace(/-/g,'');
+      const maxSeq = Math.max(...allRawRows.filter(r=>String(r.trip_id).startsWith(prefix)).map(r=>parseInt(String(r.trip_id).slice(-3))||0), 0);
+      document.getElementById('trip-id').value = prefix + String(maxSeq + 1).padStart(3, '0');
+      
+      const m = {};
+      allRawRows.forEach(r => {
+        if (!m[r.trip_id]) { 
+           m[r.trip_id] = { 
+              trip_id: r.trip_id, trip_date: r.trip_date, departure_time: r.departure_time, driver_name: r.driver_name, 
+              customer_name: r.customer_name, trip_type: r.trip_type || "ส่งงาน", start_location: r.start_location || "TLP", 
+              depart_dest_time: r.depart_dest_time || "", all_invoices: [] 
+           }; 
+        }
+        if(r.invoice) m[r.trip_id].all_invoices.push({ inv_code: r.invoice, return_warehouse_time: r.return_time || "", note: r.note });
+      });
+      uniqueTrips = Object.values(m);
+      
+      calculateSummaryStats(); renderMainRecordsList(); renderPendingDashboard(); renderHistoryDashboard();
+      lucide.createIcons();
+    } catch (e) { document.getElementById('empty-msg').textContent = "⚠️ โหลดล้มเหลว กรุณารีเฟรชหน้าจอ"; }
   }
 
-  function processAndGroupData() {
-    const map = {};
-    allRawRows.forEach(row => {
-      const tid = row.trip_id;
-      if (!map[tid]) {
-        map[tid] = {
-          trip_id: tid,
-          trip_date: row.trip_date,
-          departure_time: row.departure_time,
-          driver_name: row.driver_name,
-          customer_name: row.customer_name,
-          trip_type: row.trip_type || "ส่งงาน",
-          start_location: row.start_location || "TLP",
-          all_invoices: [] 
-        };
-      }
-      if(row.invoice) {
-        map[tid].all_invoices.push({
-          inv_code: row.invoice,
-          return_time: row.return_time,
-          note: row.note
-        });
-      }
-    });
-    uniqueTrips = Object.values(map);
-  }
-
-  // 📈 ฟังก์ชันคำนวณหน้าสรุปภาพรวมแดชบอร์ดสถิติ (รองรับฟิลเตอร์ วัน/สัปดาห์/เดือน/ปี)
   function calculateSummaryStats() {
-     let t1 = 0, t2 = 0, t3 = 0, t4 = 0;
-     let totalInv = 0, successInv = 0, pendingInv = 0, reasonCount = 0;
-     let filteredTripCount = 0;
-
-     // 1. สรุปประเภทเที่ยวรถวิ่ง
+     let t1=0, t2=0, t3=0, t4=0, t5=0, totalInv=0, successInv=0, pendingInv=0, reasonCount=0, tripsCount=0;
      uniqueTrips.forEach(t => {
-        if (!isDateInFilterRange(t.trip_date, currentTimeFilter)) return;
-        
-        filteredTripCount++;
-        const typeStr = String(t.trip_type);
-        if (typeStr.includes("ส่งงาน")) t1++;
-        else if (typeStr.includes("รับPart Supply")) t2++;
-        else if (typeStr.includes("เครีย์เอกสาร")) t3++;
-        else t4++;
+        if (!isDateInFilterRange(t.trip_date, currentTimeFilter)) return; tripsCount++;
+        if (t.trip_type.includes("ส่งงาน")) t1++; else if (t.trip_type.includes("รับPart Supply")) t2++; else if (t.trip_type.includes("เครีย์เอกสาร")) t3++; else if (t.trip_type.includes("รับMAT จากนาป่า")) t4++; else t5++;
+     });
+     allRawRows.forEach(r => {
+        if (!isDateInFilterRange(r.trip_date, currentTimeFilter)) return; totalInv++;
+        if (r.return_time && r.return_time.trim() !== "") successInv++; else pendingInv++;
+        if (r.note && r.note.trim() !== "" && r.note.trim() !== "-") reasonCount++;
      });
 
-     // 2. สรุปรายละเอียดรายตัว INV
-     allRawRows.forEach(row => {
-        if (!isDateInFilterRange(row.trip_date, currentTimeFilter)) return;
+     document.getElementById('stat-total-trips').textContent = `${tripsCount} ครั้ง`;
+     document.getElementById('stat-total-inv').textContent = totalInv; document.getElementById('stat-success-inv').textContent = successInv; document.getElementById('stat-pending-inv').textContent = pendingInv; document.getElementById('stat-reason-count').textContent = reasonCount;
 
-        totalInv++;
-        if (row.return_time && row.return_time.trim() !== "") { successInv++; } 
-        else { pendingInv++; }
+     const ctxB = document.getElementById('barChart').getContext('2d'); if (barChartInstance) barChartInstance.destroy();
+     barChartInstance = new Chart(ctxB, { type: 'bar', data: { labels: ['ส่งงาน', 'รับPart', 'เครีย์เอกสาร', 'รับนาป่า', 'อื่นๆ'], datasets: [{ data: [t1, t2, t3, t4, t5], backgroundColor: ['#fbbf24', '#3b82f6', '#a855f7', '#10b981', '#64748b'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
 
-        if (row.note && row.note.trim() !== "" && row.note.trim() !== "-") { reasonCount++; }
-     });
-
-     // 3. แสดงข้อมูลลงบนแดชบอร์ดสรุปผล
-     document.getElementById('stat-total-trips').innerHTML = `${filteredTripCount} <span class="text-xs font-normal text-slate-400">ครั้ง</span>`;
-     document.getElementById('stat-type-1').textContent = t1;
-     document.getElementById('stat-type-2').textContent = t2;
-     document.getElementById('stat-type-3').textContent = t3;
-     document.getElementById('stat-type-4').textContent = t4;
-
-     document.getElementById('stat-total-inv').textContent = totalInv;
-     document.getElementById('stat-success-inv').textContent = successInv;
-     document.getElementById('stat-pending-inv').textContent = pendingInv;
-     document.getElementById('stat-reason-count').textContent = reasonCount;
-
-     const ratio = totalInv > 0 ? Math.round((successInv / totalInv) * 100) : 0;
-     document.getElementById('stat-inv-ratio').textContent = `อัตราตรวจรับสำเร็จ: ${ratio}%`;
+     const ctxP = document.getElementById('pieChart').getContext('2d'); if (pieChartInstance) pieChartInstance.destroy();
+     pieChartInstance = new Chart(ctxP, { type: 'pie', data: { labels: ['สำเร็จ', 'ค้างคลัง'], datasets: [{ data: [successInv, pendingInv], backgroundColor: ['#10b981', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: false } });
   }
 
   function renderMainRecordsList() {
-    const container = document.getElementById('records-list');
-    const filterText = document.getElementById('active-trip-filter').value.toLowerCase().trim();
-    container.innerHTML = '';
-    
-    let activeTrips = uniqueTrips.filter(t => t.all_invoices.some(inv => !inv.return_time || inv.return_time.trim() === ""));
+    const container = document.getElementById('records-list'); const kw = document.getElementById('active-trip-filter').value.toLowerCase(); container.innerHTML = '';
+    let active = uniqueTrips.filter(t => t.all_invoices.some(inv => !inv.return_warehouse_time || inv.return_warehouse_time.trim() === ""));
+    if (kw) active = active.filter(t => String(t.driver_name).toLowerCase().includes(kw) || String(t.customer_name).toLowerCase().includes(kw) || String(t.trip_id).toLowerCase().includes(kw));
 
-    if (filterText !== "") {
-       activeTrips = activeTrips.filter(t => {
-          return String(t.driver_name).toLowerCase().includes(filterText) ||
-                 String(t.customer_name).toLowerCase().includes(filterText) ||
-                 String(t.trip_id).toLowerCase().includes(filterText) ||
-                 t.all_invoices.some(i => String(i.inv_code).toLowerCase().includes(filterText));
-       });
-    }
+    if(active.length === 0) { container.innerHTML = `<p class="text-slate-500 text-center py-4 text-xs">ไม่มีรถวิ่งงานในคลังขณะนี้</p>`; return; }
 
-    if (activeTrips.length === 0) {
-      container.innerHTML = `<p class="text-slate-500 text-center py-4 text-xs">ไม่มีรอบรถกำลังวิ่งตามเงื่อนไขนี้</p>`;
-      return;
-    }
-
-    activeTrips.sort((a,b) => String(b.trip_id).localeCompare(String(a.trip_id))).forEach(trip => {
+    active.forEach(trip => {
       const card = document.createElement('div');
-      card.className = 'bg-slate-800/60 rounded-xl p-3.5 border border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs';
-      
-      let invBadgesHTML = '';
-      trip.all_invoices.forEach(inv => {
-        if (inv.return_time && inv.return_time.trim() !== "") {
-          invBadgesHTML += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">✓ ${inv.inv_code}</span>`;
-        } else {
-          const suffixText = inv.note ? ` [${inv.note}]` : '';
-          invBadgesHTML += `<span class="bg-slate-700 text-amber-300 border border-slate-600 px-1.5 py-0.5 rounded animate-pulse">⏱ ${inv.inv_code}${suffixText}</span>`;
-        }
-      });
-
+      const hasDeparted = (trip.depart_dest_time && trip.depart_dest_time.trim() !== "");
+      card.className = 'bg-slate-800 p-4 rounded-xl border border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 text-xs';
       card.innerHTML = `
-        <div class="flex-1 min-w-0 space-y-1.5">
-          <div class="flex items-center gap-1.5 flex-wrap">
-            <span class="bg-amber-400 text-slate-900 font-bold px-1.5 py-0.5 rounded text-[10px]">เที่ยว: ${trip.trip_id}</span>
-            <span class="bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded text-[10px]">ออก: ${trip.start_location}</span>
-            <span class="text-blue-300 font-medium">[${trip.trip_type}]</span>
-            <div class="flex flex-wrap gap-1">${invBadgesHTML}</div>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-slate-400">
-            <div>คนส่ง: <strong class="text-slate-200">${trip.driver_name}</strong></div>
-            <div>ปลายทาง: <strong class="text-slate-200">${trip.customer_name}</strong></div>
-            <div>วันที่: <strong class="text-slate-300">${trip.trip_date}</strong></div>
-            <div>เวลาออก: <strong class="text-amber-400">${trip.departure_time} น.</strong></div>
-          </div>
+        <div>
+           <div class="flex items-center gap-2 mb-1">
+              <span class="bg-amber-400 text-slate-900 font-bold px-1.5 rounded">เที่ยว: ${trip.trip_id}</span>
+              <span class="text-slate-300 font-semibold">${trip.driver_name} -> ${trip.customer_name}</span>
+           </div>
+           <div class="text-slate-400">ประเภท: ${trip.trip_type} | เวลาออก: ${trip.departure_time} น. | ออกจากจุดหมาย: <strong class="text-amber-400 text-sm font-mono">${trip.depart_dest_time || 'ยังไม่บันทึก'}</strong></div>
         </div>
-        <button class="trigger-modal-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 self-end sm:self-center">
-           <i data-lucide="check-square" class="w-3.5 h-3.5"></i> ลงเวลา
-        </button>
+        <div class="flex items-center gap-2">
+           <button class="depart-btn bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-2.5 py-1.5 rounded transition-all disabled:opacity-40" ${hasDeparted ? 'disabled' : ''}>
+              ${hasDeparted ? '✓ ออกปลายทางแล้ว' : 'บันทึกออกปลายทาง'}
+           </button>
+           <button class="return-wh-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded transition-all disabled:opacity-30" ${!hasDeparted ? 'disabled' : ''}>
+              ถึงบริษัท
+           </button>
+        </div>
       `;
 
-      card.querySelector('.trigger-modal-btn').addEventListener('click', () => {
-        selectedTripData = trip; openReturnModal(trip);
+      card.querySelector('.depart-btn').addEventListener('click', async (e) => {
+         const now = new Date(); const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+         if(confirm(`ยืนยันบันทึกเวลาออกจากปลายทางลงคอลัมน์ K?`)) {
+            e.target.disabled = true;
+            await executeDirectTimeUpdate(trip.trip_id, 'depart', tStr);
+         }
+      });
+
+      card.querySelector('.return-wh-btn').addEventListener('click', () => { 
+         selectedTripData = trip; 
+         openModal(trip); 
       });
       container.appendChild(card);
     });
     lucide.createIcons();
   }
 
+  async function executeDirectTimeUpdate(id, type, timeStr) {
+     try {
+        await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'update_single_time', trip_id: id, time_type: type, time_value: timeStr }) });
+     } catch (e) { } finally { setTimeout(fetchRecords, 600); }
+  }
+
   function renderPendingDashboard() {
-    const tbody = document.getElementById('dashboard-body');
-    const emptyMsg = document.getElementById('dashboard-empty-msg');
-    const filterKeyword = document.getElementById('pending-search-filter').value.toLowerCase().trim();
-    tbody.innerHTML = '';
-    let visibleCount = 0;
-    
-    allRawRows.forEach(row => {
-      if (row.return_time && row.return_time.trim() !== "") return; 
-      if (!isDateInFilterRange(row.trip_date, currentTimeFilter)) return; // ตรวจเงื่อนไขเวลา
-      
-      if (filterKeyword !== "" && !String(row.driver_name).toLowerCase().includes(filterKeyword) && !String(row.customer_name).toLowerCase().includes(filterKeyword) && !String(row.trip_id).toLowerCase().includes(filterKeyword)) return;
-      
-      visibleCount++;
-      const tr = document.createElement('tr');
-      tr.className = 'hover:bg-slate-900/40 border-b border-slate-900';
-      tr.innerHTML = `
-         <td class="py-2 px-3 font-bold text-amber-400">${row.trip_id}</td>
-         <td class="py-2 px-3 text-slate-400">${row.start_location || 'TLP'}</td>
-         <td class="py-2 px-3 text-slate-400">${row.trip_type}</td>
-         <td class="py-2 px-3">${row.trip_date}</td>
-         <td class="py-2 px-3 font-semibold text-white">${row.driver_name}</td>
-         <td class="py-2 px-3 text-red-400 font-bold font-mono">${row.invoice || '-'}</td>
-         <td class="py-2 px-3 text-slate-300">${row.customer_name}</td>
-      `;
+    const tbody = document.getElementById('dashboard-body'); tbody.innerHTML = '';
+    allRawRows.filter(r => (!r.return_time || r.return_time.trim() === "") && isDateInFilterRange(r.trip_date, currentTimeFilter)).forEach(row => {
+      const tr = document.createElement('tr'); tr.className = 'border-b border-slate-900';
+      tr.innerHTML = `<td class="py-2 px-3 font-bold text-amber-400">${row.trip_id}</td><td class="py-2 px-3">${row.trip_type}</td><td class="py-2 px-3">${row.trip_date}</td><td class="py-2 px-3">${row.driver_name}</td><td class="py-2 px-3 text-red-400 font-bold">${row.invoice || '-'}</td><td class="py-2 px-3">${row.customer_name}</td>`;
       tbody.appendChild(tr);
     });
-    
-    if (visibleCount === 0) emptyMsg.classList.remove('hidden');
-    else emptyMsg.classList.add('hidden');
   }
 
   function renderHistoryDashboard() {
-     const tbody = document.getElementById('history-dashboard-body');
-     const emptyMsg = document.getElementById('history-empty-msg');
-     const kw = document.getElementById('history-search-filter').value.toLowerCase().trim();
-     tbody.innerHTML = '';
+     const tbody = document.getElementById('history-dashboard-body'); const kw = document.getElementById('history-search-filter').value.toLowerCase(); tbody.innerHTML = '';
+     if(!kw) return;
+     allRawRows.filter(r => r.return_time && r.return_time.trim() !== "").forEach(row => {
+        if (String(row.invoice).toLowerCase().includes(kw) || String(row.driver_name).toLowerCase().includes(kw) || String(row.trip_id).toLowerCase().includes(kw)) {
+           const tr = document.createElement('tr'); tr.className = 'border-b border-slate-900';
+           
+           let imgLinkHtml = `<span class="text-slate-500">-</span>`;
+           if (row.photo_url && row.photo_url.startsWith("http")) {
+              imgLinkHtml = `<a href="${row.photo_url}" target="_blank" class="text-sky-400 font-bold hover:underline flex items-center gap-0.5"><i data-lucide="image" class="w-3.5 h-3.5"></i>เปิดดูรูป</a>`;
+           }
 
-     if (kw === "") {
-        emptyMsg.classList.remove('hidden');
-        emptyMsg.textContent = "💡 พิมพ์ระบุคำค้นหาด้านบน เพื่อสืบค้นข้อมูลประวัติ INV เคลียร์งานย้อนหลัง";
-        return;
-     }
-
-     let matchCount = 0;
-     allRawRows.forEach(row => {
-        if (!row.return_time || row.return_time.trim() === "") return;
-
-        if (String(row.invoice).toLowerCase().includes(kw) || String(row.driver_name).toLowerCase().includes(kw) || String(row.customer_name).toLowerCase().includes(kw) || String(row.trip_id).toLowerCase().includes(kw)) {
-           matchCount++;
-           const tr = document.createElement('tr');
-           tr.className = 'hover:bg-slate-900/40 border-b border-slate-900';
-           tr.innerHTML = `
-              <td class="py-2 px-3 font-mono font-bold text-slate-400">${row.trip_id}</td>
-              <td class="py-2 px-3 text-slate-500">${row.start_location || 'TLP'}</td>
-              <td class="py-2 px-3 text-slate-400">${row.trip_type}</td>
-              <td class="py-2 px-3 text-slate-400">${row.trip_date}</td>
-              <td class="py-2 px-3 text-emerald-400 font-bold">${row.return_time} น.</td>
-              <td class="py-2 px-3 font-medium text-slate-200">${row.driver_name}</td>
-              <td class="py-2 px-3 text-amber-300 font-bold font-mono">${row.invoice || '-'}</td>
-              <td class="py-2 px-3 text-slate-300">${row.customer_name}</td>
-              <td class="py-2 px-3 text-red-400 font-semibold">${row.note || '-'}</td>
-           `;
+           tr.innerHTML = `<td class="py-2 px-3 font-bold text-slate-400">${row.trip_id}</td><td class="py-2 px-3">${row.trip_type}</td><td class="py-2 px-3">${row.trip_date}</td><td class="py-2 px-3 text-amber-400 font-bold font-mono">${row.depart_dest_time || '-'}</td><td class="py-2 px-3 text-indigo-400 font-bold font-mono">${row.return_time}</td><td class="py-2 px-3">${row.driver_name}</td><td class="py-2 px-3 text-amber-300 font-mono">${row.invoice || '-'}</td><td class="py-2 px-3">${row.customer_name}</td><td class="py-2 px-3">${imgLinkHtml}</td>`;
            tbody.appendChild(tr);
         }
      });
-
-     if (matchCount === 0) {
-        emptyMsg.classList.remove('hidden');
-        emptyMsg.textContent = "❌ ไม่พบประวัติการส่งมอบหรือหมายเหตุข้อมูลที่ตรงกับคำกรอง";
-     } else {
-        emptyMsg.classList.add('hidden');
-     }
+     lucide.createIcons();
   }
 
-  // 📦 หน้าเปิดโมดอลบันทึกเวลากลับ (เพิ่ม Dropdown รายการสาเหตุตามกำหนด)
-  function openReturnModal(trip) {
-    document.getElementById('modal-trip-id').textContent = `เที่ยวรถ: ${trip.trip_id}`;
-    document.getElementById('modal-meta-display').textContent = `ต้นทาง: ${trip.start_location} | ประเภทงาน: ${trip.trip_type} | คนส่ง: ${trip.driver_name}`;
-    const container = document.getElementById('modal-invoice-list-container');
-    container.innerHTML = '';
+  function openModal(trip) {
+    base64ImageData = ""; base64ImageName = ""; base64ImageType = "";
+    document.getElementById('modal-image-input').value = "";
+    document.getElementById('image-preview-container').classList.add('hidden');
 
-    trip.all_invoices.forEach((inv) => {
-      if(!inv.return_time || inv.return_time.trim() === "") {
-        const rowDiv = document.createElement('div');
-        rowDiv.className = 'bg-slate-800 p-2.5 rounded-xl border border-slate-700 space-y-2';
-        rowDiv.innerHTML = `
-          <div class="flex items-center justify-between">
-            <label class="flex items-center gap-1.5 cursor-pointer font-semibold text-xs text-slate-100">
-              <input type="checkbox" value="${inv.inv_code}" checked class="modal-inv-checkbox rounded text-emerald-500 w-3.5 h-3.5 bg-slate-700">
-              <span>รายการ: ${inv.inv_code}</span>
-            </label>
-            <span class="status-indicator-text text-[11px] text-emerald-400">เข้าคลังสำเร็จ</span>
-          </div>
-          
-          <div class="reason-select-container hidden space-y-1.5">
-             <select class="modal-inv-reason-select w-full bg-slate-900 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none">
-                <option value="1.ชิ้นงานไม่ตรง INV.">1. ชิ้นงานไม่ตรง INV.</option>
-                <option value="2. เปิด INV. ซ้ำ">2. เปิด INV. ซ้ำ</option>
-                <option value="3.ลูกค้าตรวจสอบล่าช้า">3. ลูกค้าตรวจสอบล่าช้า</option>
-                <option value="อื่นๆ">4. อื่นๆ (ระบุข้อมูลเพิ่มเติม)</option>
-             </select>
-             <input type="text" class="modal-inv-reason-custom hidden w-full bg-slate-900 border border-red-500/40 rounded-lg px-2 py-1 text-xs text-red-300 focus:outline-none" placeholder="* โปรดระบุเหตุผลอื่นเพิ่มเติม...">
-          </div>
+    const c = document.getElementById('modal-invoice-list-container'); c.innerHTML = '';
+    trip.all_invoices.forEach(inv => {
+        const d = document.createElement('div'); d.className = 'bg-slate-900 p-2 rounded border border-slate-700 text-xs space-y-1';
+        const isOk = !(inv.note && inv.note !== "-");
+        d.innerHTML = `
+          <div class="flex justify-between items-center"><label class="flex items-center gap-1"><input type="checkbox" value="${inv.inv_code}" ${isOk?'checked':''} class="modal-inv-cb"> <span>INV: ${inv.inv_code}</span></label></div>
+          <div class="r-select-box ${isOk?'hidden':''}"><select class="modal-reason bg-slate-800 text-white rounded p-1 w-full"><option value="1.ชิ้นงานไม่ตรง INV.">1. ชิ้นงานไม่ตรง INV.</option><option value="2. เปิด INV. ซ้ำ">2. เปิด INV. ซ้ำ</option><option value="3.ลูกค้าตรวจสอบล่าช้า">3. ลูกค้าตรวจสอบล่าช้า</option></select></div>
         `;
-
-        const cb = rowDiv.querySelector('.modal-inv-checkbox');
-        const selectContainer = rowDiv.querySelector('.reason-select-container');
-        const reasonSelect = rowDiv.querySelector('.modal-inv-reason-select');
-        const customInput = rowDiv.querySelector('.modal-inv-reason-custom');
-        const statusText = rowDiv.querySelector('.status-indicator-text');
-
-        // ควบคุมการเลือก Dropdown
-        reasonSelect.addEventListener('change', () => {
-           if (reasonSelect.value === "อื่นๆ") {
-              customInput.classList.remove('hidden');
-              customInput.required = true;
-              customInput.focus();
-           } else {
-              customInput.classList.add('hidden');
-              customInput.required = false;
-              customInput.value = '';
-           }
-        });
-
-        // ควบคุมการกดติ๊กถูก Checkbox สถานะใบงาน
-        cb.addEventListener('change', () => {
-          if (cb.checked) {
-            selectContainer.classList.add('hidden'); 
-            statusText.textContent = 'เข้าคลังสำเร็จ'; 
-            statusText.className = 'text-[11px] text-emerald-400';
-          } else {
-            selectContainer.classList.remove('hidden'); 
-            statusText.textContent = 'ค้างตรวจสอบ'; 
-            statusText.className = 'text-[11px] text-red-400';
-          }
-        });
-        container.appendChild(rowDiv);
-      }
+        d.querySelector('.modal-inv-cb').addEventListener('change', (e) => { d.querySelector('.r-select-box').classList.toggle('hidden', e.target.checked); });
+        c.appendChild(d);
+    });
+    document.getElementById('modal').classList.remove('hidden');
+    lucide.createIcons();
+  }
+  
+  document.getElementById('modal-cancel').addEventListener('click', () => document.getElementById('modal').classList.add('hidden'));
+  
+  document.getElementById('modal-save').addEventListener('click', async () => {
+    const now = new Date(); 
+    const tStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    
+    const map = {};
+    document.getElementById('modal-invoice-list-container').querySelectorAll('.modal-inv-cb').forEach(cb => {
+       const box = cb.closest('div').parentElement;
+       map[cb.value] = { checked: cb.checked, reason: box.querySelector('.modal-reason')?.value || "" };
     });
 
-    const t = new Date();
-    document.getElementById('return-time').value = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
-    document.getElementById('modal').classList.remove('hidden');
+    // 🔒 ล็อกปุ่มขากลับทันทีเพื่อป้องกันการกดซ้ำซ้อน
+    document.getElementById('modal-save').disabled = true;
+    document.getElementById('modal-save').textContent = "กำลังล็อกเวลาและส่งรูปภาพ...";
+
+    try {
+       await fetch(GOOGLE_SCRIPT_URL, { 
+          method: 'POST', 
+          body: JSON.stringify({ 
+             action: 'return_time', 
+             trip_id: selectedTripData.trip_id, 
+             return_time: tStr, 
+             inv_status_map: map,
+             image_base64: base64ImageData,
+             image_name: base64ImageName,
+             image_type: base64ImageType
+          }) 
+       });
+    } catch(err) { } finally {
+       document.getElementById('modal').classList.add('hidden');
+       document.getElementById('modal-save').disabled = false;
+       document.getElementById('modal-save').textContent = "บันทึกเวลา Auto และส่งรูป";
+       setTimeout(fetchRecords, 600);
+    }
+  });
+
+  function setupExportExcelListener() {
+     document.getElementById('export-excel-btn').addEventListener('click', async () => {
+        const data = allRawRows.filter(r => isDateInFilterRange(r.trip_date, currentTimeFilter));
+        if(data.length === 0) { alert('ไม่มีข้อมูลจัดทำรายงาน'); return; }
+
+        const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Report');
+        ws.views = [{ showGridLines: true }];
+        
+        ws.addRow(['📊 รายงานสรุปภาพรวมและลิงก์ภาพถ่ายขนส่งสินค้า']);
+        ws.addRow(['เลขที่เที่ยวรถ', 'ประเภทงานวิ่ง', 'วันที่ออกเดินทาง', 'เวลาออกคลัง', 'เวลากลับถึงบริษัท', 'ชื่อผู้ส่งงาน', 'เลขที่ใบงาน (INV)', 'ลูกค้าปลายทาง', 'หมายเหตุ', 'เวลาออกจากจุดหมาย(K)', 'ลิงก์รูปหลักฐาน(L)']);
+        
+        data.forEach(item => {
+           ws.addRow([
+              item.trip_id, item.trip_type, item.trip_date, item.departure_time,
+              item.return_time || 'กำลังวิ่งงาน', item.driver_name, item.invoice || '-', 
+              item.customer_name, item.note || '-', item.depart_dest_time || '-', item.photo_url || '-'
+           ]);
+        });
+
+        const buf = await wb.xlsx.writeBuffer();
+        saveAs(new Blob([buf]), `รายงานแดชบอร์ดขนส่ง_มีรูปถ่าย_${currentTimeFilter}.xlsx`);
+     });
   }
 
-  document.getElementById('modal-cancel').addEventListener('click', () => {
-    document.getElementById('modal').classList.add('hidden'); selectedTripData = null;
-  });
-
-  document.getElementById('modal-save').addEventListener('click', async () => {
-    const returnTimeValue = document.getElementById('return-time').value;
-    const itemRows = document.getElementById('modal-invoice-list-container').children;
-    if (itemRows.length === 0) return;
-    
-    const invStatusMap = {};
-    let isValidationError = false;
-
-    for (let row of itemRows) {
-      const cb = row.querySelector('.modal-inv-checkbox'); if(!cb) continue;
-      const invCode = cb.value; 
-      const isChecked = cb.checked; 
-      
-      let finalReasonText = "";
-
-      if (!isChecked) {
-         const rSelect = row.querySelector('.modal-inv-reason-select');
-         const rCustom = row.querySelector('.modal-inv-reason-custom');
-         
-         if (rSelect.value === "อื่นๆ") {
-            finalReasonText = rCustom.value.trim();
-            if (finalReasonText === "") {
-               alert(`กรุณากรอกระบุรายละเอียดสาเหตุอื่นๆ สำหรับใบงาน: ${invCode} ด้วยครับ`);
-               rCustom.focus(); isValidationError = true; break;
-            }
-         } else {
-            finalReasonText = rSelect.value;
-         }
-      }
-
-      invStatusMap[invCode] = { checked: isChecked, reason: finalReasonText };
-    }
-
-    if (isValidationError) return;
-    const btn = document.getElementById('modal-save'); btn.disabled = true; btn.textContent = 'กำลังบันทึกข้อมูล...';
-
-    try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'return_time', trip_id: selectedTripData.trip_id, return_time: returnTimeValue, inv_status_map: invStatusMap })
-      });
-      setTimeout(() => {
-        document.getElementById('modal').classList.add('hidden'); btn.disabled = false; btn.textContent = 'ยืนยันลงบันทึก'; fetchRecords();
-      }, 1200);
-    } catch (err) { alert('เครือข่ายขัดข้อง'); btn.disabled = false; }
-  });
-
+  // ฟอร์มบันทึกข้อมูลเที่ยวรถใหม่
   document.getElementById('delivery-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const typeSelect = document.getElementById('trip-type');
-    let selectedTypeText = typeSelect.value;
-    if (selectedTypeText === "4. อื่นๆ") { selectedTypeText = document.getElementById('trip-type-other').value.trim() || "4. อื่นๆ"; }
+    e.preventDefault(); 
+    
+    // 🔒 1. ล็อกปุ่มกดบันทึกทันที เพื่อไม่ให้คนขับกดซ้ำเบิ้ลได้เด็ดขาด
+    const btn = document.getElementById('submit-btn');
+    const btnText = document.getElementById('submit-btn-text');
+    btn.disabled = true;
+    btnText.textContent = "กำลังบันทึกข้อมูลเที่ยวรถ...";
 
-    const locSelect = document.getElementById('start-location-select');
-    let finalLocation = locSelect.value;
-    if (finalLocation === "อื่นๆ") { finalLocation = document.getElementById('start-location-custom').value.trim() || "อื่นๆ"; }
+    const s = document.getElementById('trip-type'); let tText = s.value;
+    if (tText === "5. อื่นๆ") tText = document.getElementById('trip-type-other').value.trim() || "5. อื่นๆ";
+    const loc = document.getElementById('start-location-select'); let fLoc = loc.value;
+    if (fLoc === "อื่นๆ") fLoc = document.getElementById('start-location-custom').value.trim() || "อื่นๆ";
 
-    const invItems = [];
-    if (typeSelect.value === "ส่งงาน") {
+    const invs = [];
+    if (s.value === "ส่งงาน") {
         document.querySelectorAll('.invoice-item').forEach(el => {
-          const pfx = el.querySelector('.inv-prefix').value;
-          const num = el.querySelector('.inv-number').value.trim();
-          const yr = el.querySelector('.inv-year').value;
-          if (num) invItems.push(`${pfx}${num}-${yr}`);
+          const p = el.querySelector('.inv-prefix').value, n = el.querySelector('.inv-number').value.trim(), y = el.querySelector('.inv-year').value;
+          if (n) invs.push(`${p}${n}-${y}`);
         });
-        if(invItems.length === 0) { alert('กรุณาระบุเลขที่ INV. อย่างน้อย 1 แถวครับ'); return; }
     }
 
-    const subBtn = document.getElementById('submit-btn'); subBtn.disabled = true; subBtn.textContent = 'กำลังบันทึกลงตาราง...';
-
     try {
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'new_trip', trip_id: document.getElementById('trip-id').value, trip_date: document.getElementById('trip-date').value,
-          departure_time: document.getElementById('dep-time').value, driver_name: document.getElementById('driver').value.trim(),
-          customer_name: document.getElementById('customer').value.trim(), trip_type: selectedTypeText, start_location: finalLocation, invoices: invItems 
-        })
+      // ส่งข้อมูลขึ้น Google Sheets
+      await fetch(GOOGLE_SCRIPT_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          action: 'new_trip', 
+          trip_id: document.getElementById('trip-id').value, 
+          trip_date: document.getElementById('trip-date').value, 
+          departure_time: document.getElementById('dep-time').value, 
+          driver_name: document.getElementById('driver').value.trim(), 
+          customer_name: document.getElementById('customer').value.trim(), 
+          trip_type: tText, 
+          start_location: fLoc, 
+          invoices: invs 
+        }) 
       });
+      
+      // เคลียร์ช่องข้อมูลที่จำเป็นแบบรวดเร็ว
+      document.getElementById('driver').value = ''; 
+      document.getElementById('customer').value = '';
+      // รีเซ็ตโครงสร้างกล่อง INV เหลือแค่อันเดียวว่างๆ
+      document.getElementById('invoices-container').innerHTML = `
+        <div class="invoice-item grid grid-cols-12 gap-2 items-center bg-slate-700/20 p-2 rounded-xl border border-slate-700">
+           <div class="col-span-4">
+            <select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs"> 
+             <option value="INVB-">INVB-</option> <option value="INVN-">INVN-</option> <option value="INMB-">INMB-</option> <option value="INMN-">INMN-</option> 
+            </select>
+           </div>
+           <div class="col-span-5"><input type="text" class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white" placeholder="เลขเอกสาร"></div>
+           <div class="col-span-2"><input type="text" value="2026" readonly class="inv-year w-full bg-slate-800 border border-slate-700 rounded-lg px-1 py-1 text-slate-500 text-xs text-center font-bold"></div>
+           <div class="col-span-1 text-center"><button type="button" class="remove-invoice-btn text-red-400 hover:text-red-600 p-1"><i data-lucide="x-circle" class="w-4 h-4 mx-auto"></i></button></div>
+        </div>
+      `;
+    } catch(err) { 
+       alert("เกิดข้อผิดพลาดในการเชื่อมต่อเน็ต กรุณาลองใหม่อีกครั้ง");
+    } finally { 
+       // ปลดล็อกปุ่มและอัปเดตเวลา Auto ของรอบใหม่รอไว้เลย
+       btn.disabled = false; 
+       btnText.textContent = "บันทึกข้อมูลเที่ยวรถ";
+       setInitialCurrentTime(); 
+       setTimeout(fetchRecords, 400); 
+    }
+  });
 
-      setTimeout(() => {
-        document.getElementById('driver').value = ''; document.getElementById('customer').value = '';
-        document.getElementById('trip-type-other').value = ''; document.getElementById('start-location-custom').value = '';
-        document.getElementById('trip-type').value = 'ส่งงาน'; document.getElementById('start-location-select').value = 'TLP';
-        document.getElementById('invoice-section').classList.remove('hidden'); document.getElementById('other-type-container').classList.add('hidden'); document.getElementById('custom-location-container').classList.add('hidden');
-        
-        document.getElementById('invoices-container').innerHTML = `
-          <div class="invoice-item grid grid-cols-12 gap-2 items-center bg-slate-700/20 p-2 rounded-xl border border-slate-700">
-            <div class="col-span-4">
-             <select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"> 
-              <option value="INVB-">INVB-</option> <option value="INVN-">INVN-</option> <option value="INMB-">INMB-</option> <option value="INMN-">INMN-</option> 
-             </select>
-            </div>
-            <div class="col-span-5">
-             <input type="text" class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none" placeholder="เลขที่เอกสาร">
-            </div>
-            <div class="col-span-2">
-             <input type="text" value="2026" readonly class="inv-year w-full bg-slate-800 border border-slate-700 rounded-lg px-1 py-1 text-slate-500 text-xs text-center font-bold">
-            </div>
-            <div class="col-span-1 text-center">
-             <button type="button" class="remove-invoice-btn text-red-400 hover:text-red-600 p-1"><i data-lucide="x-circle" class="w-4 h-4 mx-auto"></i></button>
-            </div>
-          </div>
-        `;
-        subBtn.disabled = false; subBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูลเที่ยวรถ';
-        fetchRecords(); 
-      }, 1200);
-    } catch(err) { alert('บันทึกล้มเหลว'); subBtn.disabled = false; }
+  document.getElementById('add-invoice-btn').addEventListener('click', () => {
+     const container = document.getElementById('invoices-container');
+     const div = document.createElement('div');
+     div.className = 'invoice-item grid grid-cols-12 gap-2 items-center bg-slate-700/20 p-2 rounded-xl border border-slate-700';
+     div.innerHTML = `
+        <div class="col-span-4"><select class="inv-prefix w-full bg-slate-700 border border-slate-600 rounded-lg px-2 py-1.5 text-white text-xs"><option value="INVB-">INVB-</option><option value="INVN-">INVN-</option></select></div>
+        <div class="col-span-5"><input type="text" class="inv-number w-full bg-slate-700 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white" placeholder="เลขเอกสาร"></div>
+        <div class="col-span-2"><input type="text" value="2026" readonly class="inv-year w-full bg-slate-800 border border-slate-700 rounded-lg px-1 py-1 text-slate-500 text-xs text-center font-bold"></div>
+        <div class="col-span-1 text-center"><button type="button" class="remove-invoice-btn text-red-400 hover:text-red-600 p-1"><i data-lucide="x-circle" class="w-4 h-4 mx-auto"></i></button></div>
+     `;
+     div.querySelector('.remove-invoice-btn').addEventListener('click', () => div.remove());
+     container.appendChild(div); lucide.createIcons();
   });
   </script>
  </body>
